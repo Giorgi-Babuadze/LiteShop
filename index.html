@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiteShop</title>
+    <style>
+        :root {
+            --primary: #4a6cf7;
+            --secondary: #2ecc71;
+            --danger: #e74c3c;
+            --text: #333;
+            --bg: #f9f9f9;
+            --card: #fff;
+            --border: #ddd;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+        
+        [data-theme="dark"] {
+            --primary: #5d7bf9;
+            --secondary: #27ae60;
+            --danger: #c0392b;
+            --text: #f1f1f1;
+            --bg: #121212;
+            --card: #1e1e1e;
+            --border: #333;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            transition: all 0.3s ease;
+            min-height: 100vh;
+        }
+        
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        button {
+            background-color: var(--secondary);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        
+        .btn-danger { background-color: var(--danger); }
+        .btn-primary { background-color: var(--primary); }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        .product-card {
+            background-color: var(--card);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.3s;
+            box-shadow: 0 4px 6px var(--shadow);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .product-card:hover { transform: translateY(-5px); }
+        
+        .product-img {
+            width: 100%;
+            height: 200px;
+            background-color: #eee;
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #777;
+        }
+        
+        .product-content {
+            padding: 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(3px);
+        }
+        
+        .modal-content {
+            background-color: var(--card);
+            padding: 2rem;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--primary);
+            z-index: 1000;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.2s;
+            display: none;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--card);
+            color: var(--text);
+            padding: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px var(--shadow);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="loader" id="loader"></div>
+    <div class="toast" id="toast"></div>
+    
+    <header>
+        <div style="font-size: 1.5rem; font-weight: bold; display: flex; align-items: center; gap: 0.5rem;">
+            <span>🛍️</span> LiteShop
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <div id="userInfo">Not logged in</div>
+            <button id="themeToggle">🌙</button>
+            <button id="loginBtn">👤 Login</button>
+            <button id="registerBtn">✏️ Register</button>
+            <button id="logoutBtn" style="display: none;">🚪 Logout</button>
+            <button id="addProductBtn" style="display: none;">➕ Add</button>
+            <button id="adminBtn" style="display: none;">⚙️ Admin</button>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+            <input type="text" id="searchInput" placeholder="Search products..." style="flex: 1; padding: 0.7rem; border: 1px solid var(--border); border-radius: 4px;">
+            <button id="searchBtn">🔍 Search</button>
+        </div>
+        
+        <div class="product-grid" id="productGrid"></div>
+        
+        <div id="emptyState" style="display: none; text-align: center; padding: 3rem; background-color: var(--card); border-radius: 8px;">
+            <h2>No Products Found</h2>
+            <p>Start by adding your first product or adjusting your search.</p>
+            <button id="emptyStateBtn" style="margin-top: 1rem;">➕ Add First Product</button>
+        </div>
+    </div>
+    
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <h2>Login</h2>
+            <form id="loginForm">
+                <div style="margin-bottom: 1rem;">
+                    <label for="loginUsername">Username</label>
+                    <input type="text" id="loginUsername" required style="width: 100%; padding: 0.7rem; margin-top: 0.3rem; border: 1px solid var(--border); border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" required style="width: 100%; padding: 0.7rem; margin-top: 0.3rem; border: 1px solid var(--border); border-radius: 4px;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+                    <button type="button" class="btn-danger" onclick="closeModal('loginModal')">Cancel</button>
+                    <button type="submit">Login</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Register Modal -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content">
+            <h2>Register</h2>
+            <form id="registerForm">
+                <div style="margin-bottom: 1rem;">
+                    <label for="regUsername">Username</label>
+                    <input type="text" id="regUsername" required style="width: 100%; padding: 0.7rem; margin-top: 0.3rem; border: 1px solid var(--border); border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label for="regPassword">Password</label>
+                    <input type="password" id="regPassword" required style="width: 100%; padding: 0.7rem; margin-top: 0.3rem; border: 1px solid var(--border); border-radius: 4px;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+                    <button type="button" class="btn-danger" onclick="closeModal('registerModal')">Cancel</button>
+                    <button type="submit">Register</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Product Modal -->
+    <div class="modal" id="productModal">
+        <div class="modal-content">
+            <h2 id="productModalTitle">Add Product</h2>
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                <div style="border: 2px dashed var(--border); padding: 1rem; margin-bottom: 1rem; text-align: center; position: relative;">
+                    <span style="font-size: 2rem; color: var(--primary);">📷</span><br>
+                    <span>Click to select product image</span>
+                    <input type="file" id="productImage" style="opacity: 0; position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer;" accept="image/*">
+                    <img id="imagePreview" src="" alt="Preview" style="max-width: 100%; display: none; margin-top: 10px;">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label for="productName">Product Name</label>
+                    <input type="text" id="productName" required style="width: 100%; padding: 0.7rem; margin-top: 0.3rem; border: 1px solid var(--border); border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label for="productDescription">Description</label>
+                    <textarea id="productDescription" rows="3" required style="width: 100%; padding: 0.7rem; margin-top: 0.3rem; border: 1px solid var(--border); border-radius: 4px;"></textarea>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label for="productPrice">Price ($)</label>
+                    <input type="number" id="productPrice" min="0.01" step="0.01" required style="width: 100%; padding: 0.7rem; margin-top: 0.3rem; border: 1px solid var(--border); border-radius: 4px;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+                    <button type="button" class="btn-danger" onclick="closeModal('productModal')">Cancel</button>
+                    <button type="submit">Save Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Admin Panel Modal -->
+    <div class="modal" id="adminModal">
+        <div class="modal-content">
+            <h2>Admin Panel</h2>
+            <div>
+                <h3>Manage Users</h3>
+                <ul id="adminUsersList" style="list-style: none;"></ul>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+                <button type="button" class="btn-danger" onclick="closeModal('adminModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulated API Service
+        const API = {
+            delay: 500, // Simulate network delay
+            
+            // Initialize the database
+            init() {
+                if (!localStorage.getItem('liteshop_db')) {
+                    const defaultData = {
+                        users: [{ id: 1, username: 'admin', password: 'admin123!@#', role: 'admin' }],
+                        products: [
+                            { id: 1, userId: 1, username: 'admin', name: 'Premium Wireless Headphones', 
+                              description: 'High quality noise-cancelling headphones with long battery life.', price: 129.99, image: '' },
+                            { id: 2, userId: 1, username: 'admin', name: 'Smart Fitness Watch', 
+                              description: 'Track your fitness goals, heart rate, and sleep patterns.', price: 199.99, image: '' }
+                        ],
+                        theme: 'light',
+                        nextId: 3
+                    };
+                    localStorage.setItem('liteshop_db', JSON.stringify(defaultData));
+                }
+                return this.getDB();
+            },
+            
+            // Get the current database
+            getDB() {
+                return JSON.parse(localStorage.getItem('liteshop_db') || '{}');
+            },
+            
+            // Save the database
+            saveDB(db) {
+                localStorage.setItem('liteshop_db', JSON.stringify(db));
+            },
+            
+            // Simulate an API call
+            async call(action, data = null) {
+                showLoader();
+                
+                // Simulate network delay
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        const db = this.getDB();
+                        let result = null;
+                        
+                        switch (action) {
+                            case 'login':
+                                result = db.users.find(u => u.username === data.username && u.password === data.password);
+                                break;
+                                
+                            case 'register':
+                                if (db.users.some(u => u.username === data.username)) {
+                                    result = { error: 'Username already exists' };
+                                } else {
+                                    const newUser = { 
+                                        id: db.nextId++, 
+                                        username: data.username, 
+                                        password: data.password, 
+                                        role: 'user' 
+                                    };
+                                    db.users.push(newUser);
+                                    result = { id: newUser.id, username: newUser.username, role: newUser.role };
+                                }
+                                break;
+                                
+                            case 'getProducts':
+                                result = db.products;
+                                break;
+                                
+                            case 'addProduct':
+                                const newProduct = {
+                                    id: db.nextId++,
+                                    userId: data.userId,
+                                    username: data.username,
+                                    name: data.name,
+                                    description: data.description,
+                                    price: data.price,
+                                    image: data.image
+                                };
+                                db.products.push(newProduct);
+                                result = newProduct;
+                                break;
+                                
+                            case 'updateProduct':
+                                const index = db.products.findIndex(p => p.id === data.id);
+                                if (index >= 0) {
+                                    db.products[index] = { ...db.products[index], ...data };
+                                    result = db.products[index];
+                                }
+                                break;
+                                
+                            case 'deleteProduct':
+                                db.products = db.products.filter(p => p.id !== data.id);
+                                result = { success: true };
+                                break;
+                                
+                            case 'changeUserRole':
+                                const userIndex = db.users.findIndex(u => u.id === data.userId);
+                                if (userIndex >= 0) {
+                                    db.users[userIndex].role = db.users[userIndex].role === 'user' ? 'admin' : 'user';
+                                    result = db.users[userIndex];
+                                }
+                                break;
+                                
+                            case 'deleteUser':
+                                db.users = db.users.filter(u => u.id !== data.userId);
+                                db.products = db.products.filter(p => p.userId !== data.userId);
+                                result = { success: true };
+                                break;
+                                
+                            case 'setTheme':
+                                db.theme = data.theme;
+                                result = { theme: db.theme };
+                                break;
+                        }
+                        
+                        this.saveDB(db);
+                        hideLoader();
+                        resolve(result);
+                    }, this.delay);
+                });
+            }
+        };
+        
+        // UI state management
+        let currentUser = null;
+        
+        // UI helpers
+        const showLoader = () => {
+            const loader = document.getElementById('loader');
+            loader.style.display = 'block';
+            loader.style.transform = 'scaleX(0.5)';
+            setTimeout(() => {
+                loader.style.transform = 'scaleX(0.8)';
+            }, 200);
+        };
+        
+        const hideLoader = () => {
+            const loader = document.getElementById('loader');
+            loader.style.transform = 'scaleX(1)';
+            setTimeout(() => {
+                loader.style.display = 'none';
+                loader.style.transform = 'scaleX(0)';
+            }, 200);
+        };
+        
+        const showToast = (message, type = 'info') => {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.backgroundColor = type === 'error' ? 'var(--danger)' : 'var(--secondary)';
+            toast.style.color = 'white';
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        };
+        
+        const openModal = id => document.getElementById(id).style.display = 'flex';
+        const closeModal = id => {
+            document.getElementById(id).style.display = 'none';
+            if (id === 'productModal') {
+                document.getElementById('productForm').reset();
+                document.getElementById('imagePreview').style.display = 'none';
+            }
+        };
+        
+        // Update UI based on current state
+        const updateUI = async () => {
+            const isLoggedIn = !!currentUser;
+            const isAdmin = isLoggedIn && currentUser.role === 'admin';
+            
+            document.getElementById('loginBtn').style.display = isLoggedIn ? 'none' : 'inline-block';
+            document.getElementById('registerBtn').style.display = isLoggedIn ? 'none' : 'inline-block';
+            document.getElementById('logoutBtn').style.display = isLoggedIn ? 'inline-block' : 'none';
+            document.getElementById('addProductBtn').style.display = isLoggedIn ? 'inline-block' : 'none';
+            document.getElementById('adminBtn').style.display = isAdmin ? 'inline-block' : 'none';
+            document.getElementById('userInfo').textContent = isLoggedIn ? currentUser.username : 'Not logged in';
+            
+            // Get products from API
+            if (isLoggedIn) {
+                const products = await API.call('getProducts');
+                renderProducts(products);
+            } else {
+                const products = await API.call('getProducts');
+                renderProducts(products);
+            }
+        };
+        
+        // Product rendering
+        const renderProducts = (products) => {
+            const grid = document.getElementById('productGrid');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            const filtered = searchTerm 
+                ? products.filter(p => p.name.toLowerCase().includes(searchTerm) || 
+                                       p.description.toLowerCase().includes(searchTerm))
+                : products;
+            
+            grid.innerHTML = '';
+            
+            filtered.forEach(product => {
+                const canModify = currentUser && 
+                                 (currentUser.role === 'admin' || 
+                                  currentUser.id === product.userId);
+                
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.innerHTML = `
+                    <div class="product-img" style="${product.image ? `background-image: url('${product.image}')` : ''}">
+                        ${!product.image ? 'No image available' : ''}
+                    </div>
+                    <div class="product-content">
+                        <h3>${product.name}</h3>
+                        <p>${product.description}</p>
+                        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 0.5rem;">
+                            <div style="font-weight: bold; color: var(--primary);">$${product.price.toFixed(2)}</div>
+                            <div>by ${product.username}</div>
+                        </div>
+                        ${canModify ? `
+                        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+                            <button onclick="editProduct(${product.id})">✏️ Edit</button>
+                            <button class="btn-danger" onclick="deleteProduct(${product.id})">🗑️ Delete</button>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            
+            document.getElementById('emptyState').style.display = filtered.length === 0 ? 'block' : 'none';
+            grid.style.display = filtered.length === 0 ? 'none' : 'grid';
+        };
+        
+        // User authentication
+        const login = async (username, password) => {
+            const user = await API.call('login', { username, password });
+            if (user && !user.error) {
+                currentUser = user;
+                updateUI();
+                closeModal('loginModal');
+                showToast(`Welcome back, ${user.username}!`);
+                return true;
+            }
+            showToast('Invalid username or password', 'error');
+            return false;
+        };
+        
+        const register = async (username, password) => {
+            const result = await API.call('register', { username, password });
+            
+            if (result && !result.error) {
+                currentUser = result;
+                updateUI();
+                closeModal('registerModal');
+                showToast(`Account created! Welcome, ${result.username}!`);
+                return true;
+            }
+            
+            showToast(result.error || 'Registration failed', 'error');
+            return false;
+        };
+        
+        const logout = () => {
+            currentUser = null;
+            updateUI();
+            showToast('Logged out successfully');
+        };
+        
+        // Product management
+        const handleImageUpload = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        
+        const saveProduct = async (product) => {
+            const preview = document.getElementById('imagePreview');
+            const imageData = preview.style.display !== 'none' ? preview.src : '';
+            
+            if (product.id) {
+                // Update existing product
+                await API.call('updateProduct', { 
+                    ...product,
+                    image: imageData || product.image
+                });
+                showToast('Product updated successfully');
+            } else {
+                // Add new product
+                await API.call('addProduct', {
+                    userId: currentUser.id,
+                    username: currentUser.username,
+                    image: imageData,
+                    ...product
+                });
+                showToast('Product added successfully');
+            }
+            
+            updateUI();
+            closeModal('productModal');
+        };
+        
+        const editProduct = async (productId) => {
+            const products = await API.call('getProducts');
+            const product = products.find(p => p.id === productId);
+            
+            if (product && (currentUser.role === 'admin' || product.userId === currentUser.id)) {
+                document.getElementById('productModalTitle').textContent = 'Edit Product';
+                document.getElementById('productId').value = product.id;
+                document.getElementById('productName').value = product.name;
+                document.getElementById('productDescription').value = product.description;
+                document.getElementById('productPrice').value = product.price;
+                
+                const preview = document.getElementById('imagePreview');
+                if (product.image) {
+                    preview.src = product.image;
+                    preview.style.display = 'block';
+                } else {
+                    preview.style.display = 'none';
+                }
+                
+                openModal('productModal');
+            }
+        };
+        
+        const deleteProduct = async (productId) => {
+            if (confirm('Are you sure you want to delete this product?')) {
+                await API.call('deleteProduct', { id: productId });
+                showToast('Product deleted');
+                updateUI();
+            }
+        };
+        
+        // Admin functions
+        const showAdminPanel = async () => {
+            if (currentUser?.role === 'admin') {
+                const db = API.getDB();
+                const usersList = document.getElementById('adminUsersList');
+                usersList.innerHTML = '';
+                
+                db.users.forEach(user => {
+                    if (user.id !== currentUser.id) {
+                        const li = document.createElement('li');
+                        li.style.display = 'flex';
+                        li.style.justifyContent = 'space-between';
+                        li.style.margin = '10px 0';
+                        li.style.padding = '10px';
+                        li.style.backgroundColor = 'var(--bg)';
+                        li.style.borderRadius = '4px';
+                        
+                        li.innerHTML = `
+                            <div>
+                                ${user.username} 
+                                <span style="background: var(--primary); color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.8rem;">${user.role}</span>
+                            </div>
+                            <div>
+                                <button onclick="changeUserRole(${user.id})">
+                                    ${user.role === 'user' ? '👑 Make Admin' : '👤 Make User'}
+                                </button>
+                                <button class="btn-danger" onclick="deleteUser(${user.id})">🗑️ Delete</button>
+                            </div>
+                        `;
+                        
+                        usersList.appendChild(li);
+                    }
+                });
+                
+                openModal('adminModal');
+            }
+        };
+        
+        const changeUserRole = async (userId) => {
+            await API.call('changeUserRole', { userId });
+            showToast('User role updated');
+            showAdminPanel();
+        };
+        
+        const deleteUser = async (userId) => {
+            if (confirm('Are you sure you want to delete this user and all their products?')) {
+                await API.call('deleteUser', { userId });
+                showToast('User deleted');
+                showAdminPanel();
+                updateUI();
+            }
+        };
+        
+        // Theme management
+        const toggleTheme = async () => {
+            const db = API.getDB();
+            const newTheme = db.theme === 'light' ? 'dark' : 'light';
+            await API.call('setTheme', { theme: newTheme });
+            document.documentElement.setAttribute('data-theme', newTheme);
+            document.getElementById('themeToggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        };
+        
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize the database
+            const db = API.init();
+            
+            // Apply theme
+            document.documentElement.setAttribute('data-theme', db.theme);
+            document.getElementById('themeToggle').textContent = db.theme === 'light' ? '🌙' : '☀️';
+            
+            // Event listeners
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            document.getElementById('loginBtn').addEventListener('click', () => openModal('loginModal'));
+            document.getElementById('registerBtn').addEventListener('click', () => openModal('registerModal'));
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            document.getElementById('addProductBtn').addEventListener('click', () => {
+                document.getElementById('productModalTitle').textContent = 'Add New Product';
+                document.getElementById('productForm').reset();
+                document.getElementById('productId').value = '';
+                document.getElementById('imagePreview').style.display = 'none';
+                openModal('productModal');
+            });
+            document.getElementById('adminBtn').addEventListener('click', showAdminPanel);
+            document.getElementById('searchBtn').addEventListener('click', updateUI);
+            document.getElementById('searchInput').addEventListener('input', updateUI);
+            document.getElementById('productImage').addEventListener('change', handleImageUpload);
+            document.getElementById('emptyStateBtn').addEventListener('click', () => {
+                if (currentUser) {
+                    document.getElementById('productModalTitle').textContent = 'Add New Product';
+                    document.getElementById('productForm').reset();
+                    document.getElementById('productId').value = '';
+                    document.getElementById('imagePreview').style.display = 'none';
+                    openModal('productModal');
+                } else {
+                    openModal('loginModal');
+                }
+            });
+            
+            // Form submissions
+            document.getElementById('loginForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                login(document.getElementById('loginUsername').value, document.getElementById('loginPassword').value);
+            });
+            
+            document.getElementById('registerForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                register(document.getElementById('regUsername').value, document.getElementById('regPassword').value);
+            });
+            
+            document.getElementById('productForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const productId = document.getElementById('productId').value;
+                saveProduct({
+                    id: productId ? parseInt(productId) : null,
+                    name: document.getElementById('productName').value,
+                    description: document.getElementById('productDescription').value,
+                    price: parseFloat(document.getElementById('productPrice').value)
+                });
+            });
+            
+            // Initial UI update
+            updateUI();
+            
+            // Modal close on backdrop click
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', e => {
+                    if (e.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
