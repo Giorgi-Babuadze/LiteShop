@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LiteShop</title>
     <style>
+        /* Your existing CSS remains unchanged */
         :root {
             --primary: #4a6cf7;
             --secondary: #2ecc71;
@@ -298,125 +299,108 @@
     </div>
 
     <script>
-        // Simulated API Service
-        const API = {
-            delay: 500, // Simulate network delay
+        // Simulated real-time storage using localStorage
+        const Storage = {
+            key: 'liteshop_db',
             
-            // Initialize the database
             init() {
-                if (!localStorage.getItem('liteshop_db')) {
+                if (!localStorage.getItem(this.key)) {
                     const defaultData = {
                         users: [{ id: 1, username: 'admin', password: 'admin123!@#', role: 'admin' }],
                         products: [
                             { id: 1, userId: 1, username: 'admin', name: 'Premium Wireless Headphones', 
                               description: 'High quality noise-cancelling headphones with long battery life.', price: 129.99, image: '' },
+                            { id: 2, userId: 1, username: 'admin', name: ' Ascendantly, the default products will appear here too
                             { id: 2, userId: 1, username: 'admin', name: 'Smart Fitness Watch', 
                               description: 'Track your fitness goals, heart rate, and sleep patterns.', price: 199.99, image: '' }
                         ],
                         theme: 'light',
                         nextId: 3
                     };
-                    localStorage.setItem('liteshop_db', JSON.stringify(defaultData));
+                    localStorage.setItem(this.key, JSON.stringify(defaultData));
                 }
                 return this.getDB();
             },
             
-            // Get the current database
             getDB() {
-                return JSON.parse(localStorage.getItem('liteshop_db') || '{}');
+                return JSON.parse(localStorage.getItem(this.key) || '{}');
             },
             
-            // Save the database
             saveDB(db) {
-                localStorage.setItem('liteshop_db', JSON.stringify(db));
+                localStorage.setItem(this.key, JSON.stringify(db));
+                // Dispatch a storage event to notify other tabs
+                window.dispatchEvent(new Event('storage'));
             },
             
-            // Simulate an API call
-            async call(action, data = null) {
-                showLoader();
+            call(action, data = null) {
+                const db = this.getDB();
+                let result = null;
                 
-                // Simulate network delay
-                return new Promise(resolve => {
-                    setTimeout(() => {
-                        const db = this.getDB();
-                        let result = null;
-                        
-                        switch (action) {
-                            case 'login':
-                                result = db.users.find(u => u.username === data.username && u.password === data.password);
-                                break;
-                                
-                            case 'register':
-                                if (db.users.some(u => u.username === data.username)) {
-                                    result = { error: 'Username already exists' };
-                                } else {
-                                    const newUser = { 
-                                        id: db.nextId++, 
-                                        username: data.username, 
-                                        password: data.password, 
-                                        role: 'user' 
-                                    };
-                                    db.users.push(newUser);
-                                    result = { id: newUser.id, username: newUser.username, role: newUser.role };
-                                }
-                                break;
-                                
-                            case 'getProducts':
-                                result = db.products;
-                                break;
-                                
-                            case 'addProduct':
-                                const newProduct = {
-                                    id: db.nextId++,
-                                    userId: data.userId,
-                                    username: data.username,
-                                    name: data.name,
-                                    description: data.description,
-                                    price: data.price,
-                                    image: data.image
-                                };
-                                db.products.push(newProduct);
-                                result = newProduct;
-                                break;
-                                
-                            case 'updateProduct':
-                                const index = db.products.findIndex(p => p.id === data.id);
-                                if (index >= 0) {
-                                    db.products[index] = { ...db.products[index], ...data };
-                                    result = db.products[index];
-                                }
-                                break;
-                                
-                            case 'deleteProduct':
-                                db.products = db.products.filter(p => p.id !== data.id);
-                                result = { success: true };
-                                break;
-                                
-                            case 'changeUserRole':
-                                const userIndex = db.users.findIndex(u => u.id === data.userId);
-                                if (userIndex >= 0) {
-                                    db.users[userIndex].role = db.users[userIndex].role === 'user' ? 'admin' : 'user';
-                                    result = db.users[userIndex];
-                                }
-                                break;
-                                
-                            case 'deleteUser':
-                                db.users = db.users.filter(u => u.id !== data.userId);
-                                db.products = db.products.filter(p => p.userId !== data.userId);
-                                result = { success: true };
-                                break;
-                                
-                            case 'setTheme':
-                                db.theme = data.theme;
-                                result = { theme: db.theme };
-                                break;
+                switch (action) {
+                    case 'login':
+                        result = db.users.find(u => u.username === data.username && u.password === data.password);
+                        break;
+                    case 'register':
+                        if (db.users.some(u => u.username === data.username)) {
+                            result = { error: 'Username already exists' };
+                        } else {
+                            const newUser = { 
+                                id: db.nextId++, 
+                                username: data.username, 
+                                password: data.password, 
+                                role: 'user' 
+                            };
+                            db.users.push(newUser);
+                            result = { id: newUser.id, username: newUser.username, role: newUser.role };
                         }
-                        
-                        this.saveDB(db);
-                        hideLoader();
-                        resolve(result);
-                    }, this.delay);
-                });
+                        break;
+                    case 'getProducts':
+                        result = db.products;
+                        break;
+                    case 'addProduct':
+                        const newProduct = {
+                            id: db.nextId++,
+                            userId: data.userId,
+                            username: data.username,
+                            name: data.name,
+                            description: data.description,
+                            price: data.price,
+                            image: data.image
+                        };
+                        db.products.push(newProduct);
+                        result = newProduct;
+                        break;
+                    case 'updateProduct':
+                        const index = db.products.findIndex(p => p.id === data.id);
+                        if (index >= 0) {
+                            db.products[index] = { ...db.products[index], ...data };
+                            result = db.products[index];
+                        }
+                        break;
+                    case 'deleteProduct':
+                        db.products = db.products.filter(p => p.id !== data.id);
+                        result = { success: true };
+                        break;
+                    case 'changeUserRole':
+                        const userIndex = db.users.findIndex(u => u.id === data.userId);
+                        if (userIndex >= 0) {
+                            db.users[userIndex].role = db.users[userIndex].role === 'user' ? 'admin' : 'user';
+                            result = db.users[userIndex];
+                        }
+                        break;
+                    case 'deleteUser':
+                        db.users = db.users.filter(u => u.id !== data.userId);
+                        db.products = db.products.filter(p => p.userId !== data.userId);
+                        result = { success: true };
+                        break;
+                    case 'setTheme':
+                        db.theme = data.theme;
+                        result = { theme: db.theme };
+                        break;
+                }
+                
+                this.saveDB(db);
+                return Promise.resolve(result);
             }
         };
         
@@ -428,9 +412,7 @@
             const loader = document.getElementById('loader');
             loader.style.display = 'block';
             loader.style.transform = 'scaleX(0.5)';
-            setTimeout(() => {
-                loader.style.transform = 'scaleX(0.8)';
-            }, 200);
+            setTimeout(() => loader.style.transform = 'scaleX(0.8)', 200);
         };
         
         const hideLoader = () => {
@@ -448,10 +430,7 @@
             toast.style.backgroundColor = type === 'error' ? 'var(--danger)' : 'var(--secondary)';
             toast.style.color = 'white';
             toast.classList.add('show');
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
+            setTimeout(() => toast.classList.remove('show'), 3000);
         };
         
         const openModal = id => document.getElementById(id).style.display = 'flex';
@@ -475,14 +454,8 @@
             document.getElementById('adminBtn').style.display = isAdmin ? 'inline-block' : 'none';
             document.getElementById('userInfo').textContent = isLoggedIn ? currentUser.username : 'Not logged in';
             
-            // Get products from API
-            if (isLoggedIn) {
-                const products = await API.call('getProducts');
-                renderProducts(products);
-            } else {
-                const products = await API.call('getProducts');
-                renderProducts(products);
-            }
+            const products = await Storage.call('getProducts');
+            renderProducts(products);
         };
         
         // Product rendering
@@ -532,7 +505,9 @@
         
         // User authentication
         const login = async (username, password) => {
-            const user = await API.call('login', { username, password });
+            showLoader();
+            const user = await Storage.call('login', { username, password });
+            hideLoader();
             if (user && !user.error) {
                 currentUser = user;
                 updateUI();
@@ -545,8 +520,9 @@
         };
         
         const register = async (username, password) => {
-            const result = await API.call('register', { username, password });
-            
+            showLoader();
+            const result = await Storage.call('register', { username, password });
+            hideLoader();
             if (result && !result.error) {
                 currentUser = result;
                 updateUI();
@@ -554,7 +530,6 @@
                 showToast(`Account created! Welcome, ${result.username}!`);
                 return true;
             }
-            
             showToast(result.error || 'Registration failed', 'error');
             return false;
         };
@@ -580,19 +555,18 @@
         };
         
         const saveProduct = async (product) => {
+            showLoader();
             const preview = document.getElementById('imagePreview');
             const imageData = preview.style.display !== 'none' ? preview.src : '';
             
             if (product.id) {
-                // Update existing product
-                await API.call('updateProduct', { 
+                await Storage.call('updateProduct', { 
                     ...product,
                     image: imageData || product.image
                 });
                 showToast('Product updated successfully');
             } else {
-                // Add new product
-                await API.call('addProduct', {
+                await Storage.call('addProduct', {
                     userId: currentUser.id,
                     username: currentUser.username,
                     image: imageData,
@@ -600,13 +574,13 @@
                 });
                 showToast('Product added successfully');
             }
-            
+            hideLoader();
             updateUI();
             closeModal('productModal');
         };
         
         const editProduct = async (productId) => {
-            const products = await API.call('getProducts');
+            const products = await Storage.call('getProducts');
             const product = products.find(p => p.id === productId);
             
             if (product && (currentUser.role === 'admin' || product.userId === currentUser.id)) {
@@ -630,7 +604,9 @@
         
         const deleteProduct = async (productId) => {
             if (confirm('Are you sure you want to delete this product?')) {
-                await API.call('deleteProduct', { id: productId });
+                showLoader();
+                await Storage.call('deleteProduct', { id: productId });
+                hideLoader();
                 showToast('Product deleted');
                 updateUI();
             }
@@ -639,7 +615,7 @@
         // Admin functions
         const showAdminPanel = async () => {
             if (currentUser?.role === 'admin') {
-                const db = API.getDB();
+                const db = Storage.getDB();
                 const usersList = document.getElementById('adminUsersList');
                 usersList.innerHTML = '';
                 
@@ -665,7 +641,6 @@
                                 <button class="btn-danger" onclick="deleteUser(${user.id})">🗑️ Delete</button>
                             </div>
                         `;
-                        
                         usersList.appendChild(li);
                     }
                 });
@@ -675,14 +650,18 @@
         };
         
         const changeUserRole = async (userId) => {
-            await API.call('changeUserRole', { userId });
+            showLoader();
+            await Storage.call('changeUserRole', { userId });
+            hideLoader();
             showToast('User role updated');
             showAdminPanel();
         };
         
         const deleteUser = async (userId) => {
             if (confirm('Are you sure you want to delete this user and all their products?')) {
-                await API.call('deleteUser', { userId });
+                showLoader();
+                await Storage.call('deleteUser', { userId });
+                hideLoader();
                 showToast('User deleted');
                 showAdminPanel();
                 updateUI();
@@ -691,19 +670,16 @@
         
         // Theme management
         const toggleTheme = async () => {
-            const db = API.getDB();
+            const db = Storage.getDB();
             const newTheme = db.theme === 'light' ? 'dark' : 'light';
-            await API.call('setTheme', { theme: newTheme });
+            await Storage.call('setTheme', { theme: newTheme });
             document.documentElement.setAttribute('data-theme', newTheme);
             document.getElementById('themeToggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
         };
         
         // Initialize when DOM is ready
         document.addEventListener('DOMContentLoaded', async () => {
-            // Initialize the database
-            const db = API.init();
-            
-            // Apply theme
+            const db = Storage.init();
             document.documentElement.setAttribute('data-theme', db.theme);
             document.getElementById('themeToggle').textContent = db.theme === 'light' ? '🌙' : '☀️';
             
@@ -755,6 +731,13 @@
                     description: document.getElementById('productDescription').value,
                     price: parseFloat(document.getElementById('productPrice').value)
                 });
+            });
+            
+            // Real-time update listener
+            window.addEventListener('storage', (e) => {
+                if (e.key === Storage.key) {
+                    updateUI();
+                }
             });
             
             // Initial UI update
